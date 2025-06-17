@@ -1,0 +1,1827 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cinema Nosso - Seu Mapa para o Cinema Brasileiro (React)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'brazil-dark-blue': '#003366',
+              'brazil-green': '#009933',
+              'brazil-yellow': '#FFCC00',
+              'yellow-accent': '#FFD700',
+              'dark-blue': '#2c3e50',
+              'light-gray': '#ecf0f1',
+            },
+            fontFamily: {
+              'montserrat': ['Montserrat', 'sans-serif'],
+              'open-sans': ['Open Sans', 'sans-serif'],
+            }
+          }
+        }
+      }
+    </script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        .scrollbar-thin::-webkit-scrollbar { height: 8px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: var(--light-gray); border-radius: 10px; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background-color: var(--brazil-green); border-radius: 10px; border: 2px solid var(--light-gray); }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.75); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
+        .modal-content { background-color: white; border-radius: 0.75rem; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5); padding: 1.5rem; width: 100%; max-width: 500px; position: relative; transform: scale(0.9); opacity: 0; animation: fadeInScale 0.3s forwards; }
+        @keyframes fadeInScale { to { transform: scale(1); opacity: 1; } }
+        .modal-close-button { position: absolute; top: 0.75rem; right: 0.75rem; background: none; border: none; font-size: 1.8rem; cursor: pointer; color: #666; transition: color 0.2s ease; }
+        .modal-close-button:hover { color: #333; }
+        .carousel-arrow {
+          z-index: 20;
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%);
+          background: rgba(0,51,102,0.85);
+          color: #fff;
+          border-radius: 9999px;
+          width: 44px;
+          height: 44px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 2rem;
+          border: none;
+          cursor: pointer;
+          box-shadow: 0 2px 8px #0003;
+          transition: background .2s, color .2s, box-shadow .2s;
+        }
+        .carousel-arrow:hover {
+          background: #FFCC00;
+          color: #003366;
+          box-shadow: 0 4px 16px #0005;
+        }
+        .carousel-arrow-left {
+          left: -18px;
+        }
+        .carousel-arrow-right {
+          right: -18px;
+        }
+        @media (max-width: 600px) {
+          .carousel-arrow {
+            width: 36px;
+            height: 36px;
+            font-size: 1.5rem;
+          }
+          .carousel-arrow-left { left: 0; }
+          .carousel-arrow-right { right: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div id="root">Carregando Mapeamento Cultural...</div>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script type="text/babel">
+
+// ---------- Utilitários ----------
+const placeholderColors = [
+  "4CAF50", "8B0000", "4B0082", "2E8B57", "FF8C00", "1A1A1A", "A52A2A", "D2691E",
+  "008080", "483D8B", "4682B4", "B22222", "FFB300", "FFD700", "5F9EA0", "228B22",
+  "6A5ACD", "B8860B", "BC8F8F", "DC143C", "20B2AA", "FA8072", "556B2F", "7B68EE",
+  "C71585", "191970", "BDB76B", "008B8B", "A0522D", "DEB887", "8FBC8F", "00008B",
+  "9932CC", "8B4513", "2E0854", "CD5C5C", "FF6347", "4682B4", "A9A9A9", "B0C4DE",
+  "8B0000", "A0522D", "9932CC", "00CED1", "006400", "8B008B", "556B2F", "A9A9A9", "D2691E", "1E90FF"
+];
+function getPlaceholderColor(idx) { return placeholderColors[idx % placeholderColors.length]; }
+function getPlaceholderImg(title, idx) {
+  return `https://placehold.co/300x450/${getPlaceholderColor(idx)}/ffffff?text=${encodeURIComponent(title)}`;
+}
+
+const DADOS_TITULOS = [
+
+  {
+    id: 1,
+    title: "Central do Brasil",
+    genre: "Drama",
+    year: 1998,
+    platform: "Globoplay, Telecine Play, Amazon Prime Video (aluguel/compra), Apple TV (aluguel/compra)",
+    image: "./images/central-do-brasil.jpg",
+    sinopse: "Uma ex-professora escreve cartas para analfabetos na estação Central do Brasil e, após a morte da mãe de um garoto, o acompanha em busca de seu pai.",
+    isFeatured: true,
+  },
+  {
+    id: 2,
+    title: "Cidade de Deus",
+    genre: "Drama, Crime",
+    year: 2002,
+    platform: "Globoplay, HBO Max, Amazon Prime Video (aluguel/compra), Apple TV (aluguel/compra)",
+    image: "./images/cidade-de-deus.jpg",
+    sinopse: "A vida no crime organizado na Cidade de Deus, favela do Rio de Janeiro, contada através dos olhos de Buscapé, um jovem que sonha em ser fotógrafo.",
+    isFeatured: true,
+  },
+  {
+    id: 3,
+    title: "O Auto da Compadecida",
+    genre: "Comédia, Aventura",
+    year: 2000,
+    platform: "Globoplay, Amazon Prime Video, Telecine Play",
+    image: "./images/o-auto-da-compadecida.jpg",
+    sinopse: "As aventuras de João Grilo e Chicó, dois amigos nordestinos que vivem de pequenos golpes no sertão, até que se deparam com o julgamento final.",
+    isFeatured: true,
+  },
+  {
+    id: 4,
+    title: "Tropa de Elite",
+    genre: "Ação, Drama, Crime",
+    year: 2007,
+    platform: "Globoplay, Telecine Play, Amazon Prime Video (aluguel/compra), Apple TV (aluguel/compra)",
+    image: "./images/tropa-de-elite.jpg",
+    sinopse: "O Capitão Nascimento, do BOPE, busca um substituto para sua posição enquanto combate o crime no Rio de Janeiro.",
+    isFeatured: true,
+  },
+  {
+    id: 5,
+    title: "Bacurau",
+    genre: "Drama, Ficção Científica, Faroeste",
+    year: 2019,
+    platform: "Telecine Play, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra), MUBI",
+    image: "./images/bacurau.jpg",
+    sinopse: "Moradores de um vilarejo no sertão de Pernambuco, que some do mapa, descobrem que são alvo de caçadores estrangeiros.",
+    isFeatured: true,
+  },
+  {
+    id: 6,
+    title: "Que Horas Ela Volta?",
+    genre: "Drama",
+    year: 2015,
+    platform: "Netflix, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+    image: "./images/que-horas-ela-volta.jpg",
+    sinopse: "A vida de Val, uma empregada doméstica, muda quando sua filha, Jéssica, vem para São Paulo para prestar vestibular e questiona as barreiras sociais.",
+    isFeatured: true,
+  },
+  {
+    id: 7,
+    title: "Capitães da Areia",
+    genre: "Drama",
+    year: 2011,
+    platform: "Telecine Play, Globoplay (aluguel/compra)",
+    image: "./images/capitaes-da-areia.jpg",
+    sinopse: "A história de um grupo de crianças de rua em Salvador, Bahia, que vivem de pequenos furtos e buscam um lugar no mundo.",
+    isFeatured: false,
+  },
+  {
+    id: 8,
+    title: "Lisbela e o Prisioneiro",
+    genre: "Comédia Romântica",
+    year: 2003,
+    platform: "Globoplay, Telecine Play, Amazon Prime Video (aluguel/compra)",
+    image: "./images/lisbela-e-o-prisioneiro.jpg",
+    sinopse: "Lisbela, uma jovem sonhadora no interior de Pernambuco, se apaixona por Leléu, um malandro que vive de golpes e fugindo da polícia.",
+    isFeatured: false,
+  },
+  {
+    id: 9,
+    title: "O Pagador de Promessas",
+    genre: "Drama",
+    year: 1962,
+    platform: "Telecine Play, Petra Belas Artes à La Carte, Itaú Cultural Play",
+    image: "./images/o-pagador-de-promessas.jpg",
+    sinopse: "Zé do Burro carrega uma cruz em pagamento de uma promessa, enfrentando a burocracia da Igreja e a descrença das pessoas.",
+    isFeatured: false,
+  },
+  {
+    id: 10,
+    title: "Pixote, a Lei do Mais Fraco",
+    genre: "Drama, Crime",
+    year: 1981,
+    platform: "Telecine Play, Petra Belas Artes à La Carte",
+    image: "./images/pixote.jpg",
+    sinopse: "A dura realidade de Pixote, um menino de rua de 10 anos que é levado para um reformatório e mergulha no mundo do crime.",
+    isFeatured: false,
+  },
+  {
+    id: 11,
+    title: "Estômago",
+    genre: "Comédia, Drama",
+    year: 2007,
+    platform: "Netflix, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+    image: "./images/estomago.jpg",
+    sinopse: "Raimundo Nonato, um cozinheiro talentoso, usa a comida para ascender socialmente, tanto dentro quanto fora da prisão.",
+    isFeatured: false,
+  },
+  {
+    id: 12,
+    title: "Carandiru",
+    genre: "Drama, Crime",
+    year: 2003,
+    platform: "Globoplay, Amazon Prime Video (aluguel/compra), Apple TV (aluguel/compra)",
+    image: "./images/carandiru.jpg",
+    sinopse: "Um médico vai à Casa de Detenção de São Paulo para realizar um trabalho de prevenção à AIDS e acompanha o dia a dia dos detentos. Baseado em fatos reais.",
+    isFeatured: false,
+  },
+  {
+    id: 13,
+    title: "Se Eu Fosse Você",
+    genre: "Comédia",
+    year: 2006,
+    platform: "Globoplay, Telecine Play",
+    image: "./images/se-eu-fosse-voce.jpg",
+    sinopse: "Um casal briga e, misteriosamente, troca de corpos, sendo obrigado a viver a rotina um do outro.",
+    isFeatured: false,
+  },
+  {
+    id: 14,
+    title: "Tropa de Elite 2: O Inimigo Agora É Outro",
+    genre: "Ação, Drama, Crime",
+    year: 2010,
+    platform: "Globoplay, Telecine Play, Amazon Prime Video (aluguel/compra), Apple TV (aluguel/compra)",
+    image: "./images/tropa-de-elite-2-o-inimigo-agora-e-outro.jpg",
+    sinopse: "O Coronel Nascimento enfrenta inimigos mais poderosos: políticos e empresários corruptos.",
+    isFeatured: false,
+  },
+  {
+    id: 15,
+    title: "Dona Flor e Seus Dois Maridos",
+    genre: "Comédia, Fantasia, Romance",
+    year: 1976,
+    platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra), Telecine Play",
+    image: "./images/dona-flor-e-seus-dois-maridos.jpg",
+    sinopse: "Dona Flor, uma professora de culinária, casa-se novamente após a morte de seu boêmio primeiro marido, que retorna como fantasma.",
+    isFeatured: false,
+  },
+  {
+    id: 16,
+    title: "O Palhaço",
+    genre: "Comédia, Drama",
+    year: 2011,
+    platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra), Telecine Play",
+    image: "./images/o-palhaco.jpg",
+    sinopse: "Benjamim e Valdemar formam a dupla de palhaços Pangaré e Puro Sangue. Benjamim, no entanto, entra em crise existencial e decide abandonar o circo.",
+    isFeatured: false,
+  },
+  {
+    id: 17,
+    title: "Cabra Marcado Para Morrer",
+    genre: "Documentário, Drama",
+    year: 1984,
+    platform: "Spcine Play, Itaú Cultural Play",
+    image: "./images/cabra-marcado-para-morrer.jpg",
+    sinopse: "O cineasta retoma um projeto interrompido vinte anos antes, sobre o assassinato de um líder camponês, e reencontra a família do líder.",
+    isFeatured: false,
+  },
+  {
+    id: 18,
+    title: "O Cheiro do Ralo",
+    genre: "Comédia, Drama",
+    year: 2006,
+    platform: "Telecine Play, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+    image: "./images/o-cheiro-do-ralo.jpg",
+    sinopse: "Lourenço é um homem que compra objetos usados para revender em sua loja, mas se fixa em um 'cheiro de ralo' que o atormenta.",
+    isFeatured: false,
+  },
+  {
+    id: 19,
+    title: "Vidas Secas",
+    genre: "Drama",
+    year: 1963,
+    platform: "Telecine Play, Petra Belas Artes à La Carte, Itaú Cultural Play",
+    image: "./images/vidas-secas.jpg",
+    sinopse: "Uma família de retirantes do sertão nordestino luta contra a seca e a miséria.",
+    isFeatured: false,
+  },
+  {
+    id: 20,
+    title: "Narradores de Javé",
+    genre: "Comédia, Drama",
+    year: 2003,
+    platform: "Itaú Cultural Play",
+    image: "./images/narradores-de-jave.jpg",
+    sinopse: "Moradores de um vilarejo ameaçado de submersão por uma usina hidrelétrica decidem escrever a história da cidade para tentar salvá-la.",
+    isFeatured: false,
+  },
+  {
+    id: 21,
+    title: "Durval Discos",
+    genre: "Comédia, Drama",
+    year: 2002,
+    platform: "Amazon Prime Video (aluguel/compra), Itaú Cultural Play",
+    image: "./images/durval-discos.jpg",
+    sinopse: "Durval, um colecionador de discos de vinil, mora com sua mãe e tem sua rotina alterada pela chegada de uma nova empregada.",
+    isFeatured: false,
+  },
+  {
+    id: 22,
+    title: "O Homem que Copiava",
+    genre: "Comédia, Drama",
+    year: 2003,
+    platform: "Telecine Play, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+    image: "./images/o-homem-que-copiava.jpg",
+    sinopse: "André, um operador de copiadora, copia uma nota de 50 reais para se aproximar da vizinha por quem é apaixonado, envolvendo-se em uma série de golpes.",
+    isFeatured: false,
+  },
+  {
+    id: 23,
+    title: "Gonzaga - De Pai Pra Filho",
+    genre: "Drama, Musical",
+    year: 2012,
+    platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra), Telecine Play",
+    image: "./images/gonzaga-de-pai-pra-filho.jpg",
+    sinopse: "A história da relação conturbada entre Luiz Gonzaga, o Rei do Baião, e seu filho, Gonzaguinha.",
+    isFeatured: false,
+  },
+  {
+    id: 24,
+    title: "Cidade Baixa",
+    genre: "Drama",
+    year: 2005,
+    platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra), Telecine Play",
+    image: "./images/cidade-baixa.jpg",
+    sinopse: "Dois amigos, Naldinho e Deco, se apaixonam pela mesma stripper em Salvador, Bahia, gerando um triângulo amoroso explosivo.",
+    isFeatured: false,
+  },
+  {
+    id: 25,
+    title: "Bingo: O Rei das Manhãs",
+    genre: "Drama, Comédia",
+    year: 2017,
+    platform: "Telecine Play, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+    image: "./images/bingo-o-rei-das-manhas.jpg",
+    sinopse: "A história de Augusto Mendes, um ator que alcança a fama como Bingo, um palhaço de programa infantil, mas que precisa manter sua identidade em segredo.",
+    isFeatured: false,
+  },
+  {
+    id: 26,
+    title: "Terra Estrangeira",
+    genre: "Drama",
+    year: 1995,
+    platform: "Itaú Cultural Play",
+    image: "./images/terra-estrangeira.jpg",
+    sinopse: "Paco, um jovem brasileiro, viaja para Lisboa e se envolve em uma rede de contrabando, conhecendo uma brasileira exilada.",
+    isFeatured: false,
+  },
+  {
+    id: 27,
+    title: "Abril Despedaçado",
+    genre: "Drama",
+    year: 2001,
+    platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra), Apple TV (aluguel/compra)",
+    image: "./images/abril-despedacado.jpg",
+    sinopse: "No sertão nordestino de 1910, o jovem Tonho é obrigado a vingar a morte de seu irmão, seguindo uma tradição familiar.",
+    isFeatured: false,
+  },
+  {
+    id: 28,
+    title: "A Busca",
+    genre: "Drama",
+    year: 2012,
+    platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+    image: "./images/a-busca.jpg",
+    sinopse: "Um pai sai em busca de seu filho adolescente, que desapareceu misteriosamente, enquanto lida com problemas em seu casamento.",
+    isFeatured: false,
+  },
+  {
+    id: 29,
+    title: "Lavoura Arcaica",
+    genre: "Drama",
+    year: 2001,
+    platform: "Itaú Cultural Play",
+    image: "./images/lavoura-arcaica.jpg",
+    sinopse: "Baseado na obra de Raduan Nassar, o filme retrata a vida de uma família no campo e os conflitos gerados pelo retorno de um filho rebelde.",
+    isFeatured: false,
+  },
+  {
+    id: 30,
+    title: "O Invasor",
+    genre: "Drama, Crime",
+    year: 2001,
+    platform: "Telecine Play, Amazon Prime Video (aluguel/compra), Apple TV (aluguel/compra)",
+    image: "./images/o-invasor.jpg",
+    sinopse: "Após um assassinato, os sócios de uma construtora contratam um matador de aluguel, que começa a invadir suas vidas.",
+    isFeatured: false,
+  },
+  {
+    id: 31,
+    title: "Meu Nome Não É Johnny",
+    genre: "Drama, Biografia",
+    year: 2008,
+    platform: "Telecine Play, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+    image: "./images/meu-nome-nao-e-johnny.jpg",
+    sinopse: "A história real de João Guilherme Estrella, um jovem de classe média que se tornou um dos maiores traficantes de drogas do Rio de Janeiro nos anos 90.",
+    isFeatured: false,
+  },
+  {
+    id: 32,
+    title: "Bicho de Sete Cabeças",
+    genre: "Drama",
+    year: 2000,
+    platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra), Telecine Play",
+    image: "./images/bicho-de-sete-cabecas.jpg",
+    sinopse: "Neto é internado em um manicômio por seu pai após ser pego fumando maconha, revelando o tratamento desumano nos hospitais psiquiátricos.",
+    isFeatured: false,
+  },
+  {
+    id: 33,
+    title: "Cinema, Aspirinas e Urubus",
+    genre: "Drama",
+    year: 2005,
+    platform: "Itaú Cultural Play",
+    image: "./images/cinema-aspirinas-e-urubus.jpg",
+    sinopse: "Em 1942, no sertão nordestino, um alemão foge da Segunda Guerra e vende aspirinas de caminhão, encontrando um caixeiro-viajante que projeta filmes em povoados.",
+    isFeatured: false,
+  },
+  {
+    id: 34,
+    title: "Assalto ao Banco Central",
+    genre: "Ação, Crime",
+    year: 2011,
+    platform: "Telecine Play, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+    image: "./images/assalto-ao-banco-central.jpg",
+    sinopse: "Baseado no roubo ao Banco Central em Fortaleza, o filme narra os detalhes do planejamento e execução do crime.",
+    isFeatured: false,
+  },
+  {
+    id: 35,
+    title: "O Ano em que Meus Pais Saíram de Férias",
+    genre: "Drama",
+    year: 2006,
+    platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra), Telecine Play",
+    image: "./images/o-ano-em-que-meus-pais-sairam-de-ferias.jpg",
+    sinopse: "Em 1970, durante a Ditadura Militar, Mauro, um menino de 12 anos, é deixado pelos pais na casa do avô em São Paulo e precisa aprender a viver sozinho em um país em convulsão.",
+    isFeatured: false,
+  },
+  {
+    id: 36,
+    title: "Tropa de Elite 3 (curta-metragem)",
+    genre: "Ação, Crime",
+    year: 2012,
+    platform: "Curta especial, difícil de encontrar para streaming",
+    image: "./images/tropa-de-elite-3-curta-metragem.jpg",
+    sinopse: "Um curto filme promocional que dá continuidade aos temas dos filmes principais.",
+    isFeatured: false,
+  },
+  {
+    id: 37,
+    title: "2 Coelhos",
+    genre: "Ação, Comédia",
+    year: 2012,
+    platform: "Amazon Prime Video, Looke (aluguel/compra)",
+    image: "./images/2-coelhos.jpg",
+    sinopse: "Edgar, um homem com um plano complexo, tenta escapar de criminosos e da polícia usando manipulação e tecnologia.",
+    isFeatured: false,
+  },
+  {
+    id: 38,
+    title: "Casa de Areia",
+    genre: "Drama",
+    year: 2005,
+    platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra), Telecine Play",
+    image: "./images/casa-de-areia.jpg",
+    sinopse: "Uma mulher e sua filha ficam isoladas em dunas de areia no Maranhão, lutando para sobreviver e encontrar um caminho para a liberdade ao longo de décadas.",
+    isFeatured: false,
+  },
+  {
+    id: 39,
+    title: "Era o Hotel Cambridge",
+    genre: "Drama, Documentário",
+    year: 2016,
+    platform: "Petra Belas Artes à La Carte",
+    image: "./images/era-o-hotel-cambridge.jpg",
+    sinopse: "A história de refugiados e sem-tetos que vivem em um edifício ocupado no centro de São Paulo.",
+    isFeatured: false,
+  },
+  {
+    id: 40,
+    title: "O Som ao Redor",
+    genre: "Drama",
+    year: 2012,
+    platform: "Telecine Play, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+    image: "./images/o-som-ao-redor.jpg",
+    sinopse: "A vida em uma rua de classe média de Recife muda com a chegada de uma empresa de segurança privada, revelando tensões sociais e urbanas.",
+    isFeatured: false,
+  },
+  {
+    id: 41,
+    title: "Colegas",
+    genre: "Comédia, Aventura",
+    year: 2012,
+    platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+    image: "./images/colegas.jpg",
+    sinopse: "Três amigos com Síndrome de Down fogem de uma instituição para viver as aventuras inspiradas em seus filmes favoritos.",
+    isFeatured: false,
+  },
+  {
+    id: 42,
+    title: "Gonzaga – De Pai pra Filho",
+    genre: "Drama, Musical",
+    year: 2012,
+    platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra), Telecine Play",
+    image: "./images/gonzaga-de-pai-pra-filho.jpg",
+    sinopse: "A história da relação conturbada entre Luiz Gonzaga, o Rei do Baião, e seu filho, Gonzaguinha.",
+    isFeatured: false,
+  },
+  {
+    id: 43,
+    title: "Bruna Surfistinha",
+    genre: "Drama, Biografia",
+    year: 2011,
+    platform: "Globoplay, Telecine Play, Amazon Prime Video (aluguel/compra)",
+    image: "./images/bruna-surfistinha.jpg",
+    sinopse: "A história real de Raquel Pacheco, uma jovem de classe média que decide se tornar garota de programa e usa um blog para relatar suas experiências.",
+    isFeatured: false,
+  },
+  {
+    id: 44,
+    title: "Eu Tu Eles",
+    genre: "Drama, Comédia",
+    year: 2000,
+    platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra), Telecine Play",
+    image: "./images/eu-tu-eles.jpg",
+    sinopse: "Uma mulher do sertão vive com três maridos em uma casa, enfrentando os desafios de uma relação poliamorosa.",
+    isFeatured: false,
+  },
+  {
+    id: 45,
+    title: "Paraiso Perdido",
+    genre: "Drama, Musical",
+    year: 2018,
+    platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+    image: "./images/paraiso-perdido.jpg",
+    sinopse: "Uma família de cantores e músicos lida com seus próprios dramas e amores em um clube noturno de karaokê.",
+    isFeatured: false,
+  },
+  {
+    id: 46,
+    title: "Getúlio",
+    genre: "Drama, Biografia",
+    year: 2014,
+    platform: "Telecine Play, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+    image: "./images/getulio.jpg",
+    sinopse: "Os últimos 19 dias da vida de Getúlio Vargas, no Palácio do Catete, antes de seu suicídio.",
+    isFeatured: false,
+  },
+  {
+    id: 47,
+    title: "O Lobo Atrás da Porta",
+    genre: "Thriller, Drama",
+    year: 2013,
+    platform: "Globoplay, Amazon Prime Video (aluguel/compra), Apple TV (aluguel/compra)",
+    image: "./images/o-lobo-atras-da-porta.jpg",
+    sinopse: "Uma mãe desaparece e a investigação leva a um complexo triângulo amoroso e a segredos obscuros.",
+    isFeatured: false,
+  },
+  {
+    id: 48,
+    title: "A Partilha",
+    genre: "Drama, Comédia",
+    year: 2001,
+    platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+    image: "./images/a-partilha.jpg",
+    sinopse: "Quatro irmãs se reúnem após a morte da mãe para dividir a herança e relembrar suas vidas e diferenças.",
+    isFeatured: false,
+  },
+  {
+    id: 49,
+    title: "Tropa de Elite 1.5",
+    genre: "Ação, Drama, Crime",
+    year: 2008,
+    platform: "Versão estendida em DVD/Blu-ray ou extra em plataformas digitais",
+    image: "./images/tropa-de-elite-1-5.jpg",
+    sinopse: "Uma versão estendida e com material extra do primeiro filme Tropa de Elite.",
+    isFeatured: false,
+  },
+  {
+    id: 50,
+    title: "O Caminho das Nuvens",
+    genre: "Drama, Aventura",
+    year: 2003,
+    platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+    image: "./images/o-caminho-das-nuvens.jpg",
+    sinopse: "Romão e sua família viajam de Pernambuco ao Rio de Janeiro em busca de um trabalho para ele, enquanto cada um enfrenta seus próprios desafios.",
+    isFeatured: false,
+  },
+  {
+  id: 51,
+  title: "Meu Amigo Hindu",
+  genre: "Drama",
+  year: 2015,
+  platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+  image: "./images/meu-amigo-hindu.jpg",
+  sinopse: "Um cineasta, à beira da morte, reflete sobre sua vida e amizade com um menino hindu.",
+  isFeatured: false,
+},
+{
+  id: 52,
+  title: "Macunaíma",
+  genre: "Comédia, Fantasia",
+  year: 1969,
+  platform: "Telecine Play, Petra Belas Artes à La Carte, Itaú Cultural Play",
+  image: "./images/macunaima.jpg",
+  sinopse: "A história de Macunaíma, 'o herói sem nenhum caráter', que viaja do interior do Brasil para a cidade em busca de uma pedra mágica.",
+  isFeatured: false,
+},
+{
+  id: 53,
+  title: "O Beijo do Asfalto",
+  genre: "Drama",
+  year: 1981,
+  platform: "Não amplamente disponível em streaming comercial. Pode ser encontrado em coleções de cinema brasileiro.",
+  image: "./images/o-beijo-do-asfalto.jpg",
+  sinopse: "Um homem beija um moribundo no asfalto, e o ato de compaixão se torna um escândalo midiático.",
+  isFeatured: false,
+},
+{
+  id: 54,
+  title: "Os Cafajestes",
+  genre: "Drama",
+  year: 1962,
+  platform: "Não amplamente disponível em streaming comercial. Pode ser encontrado em coleções de cinema brasileiro.",
+  image: "./images/os-cafajestes.jpg",
+  sinopse: "Dois amigos, sem perspectivas de futuro, planejam um assalto no Rio de Janeiro.",
+  isFeatured: false,
+},
+{
+  id: 55,
+  title: "Um Filme Falado",
+  genre: "Drama",
+  year: 2003,
+  platform: "Filmicca",
+  image: "./images/um-filme-falado.jpg",
+  sinopse: "Uma professora universitária e sua filha fazem um cruzeiro pelo Mediterrâneo, encontrando pessoas de diferentes culturas.",
+  isFeatured: false,
+},
+{
+  id: 56,
+  title: "O Cangaceiro",
+  genre: "Aventura, Drama",
+  year: 1953,
+  platform: "Itaú Cultural Play, YouTube (domínio público)",
+  image: "./images/o-cangaceiro.jpg",
+  sinopse: "Um grupo de cangaceiros liderado por Capitão Gato aterroriza o sertão nordestino.",
+  isFeatured: false,
+},
+{
+  id: 57,
+  title: "Limite",
+  genre: "Drama, Experimental",
+  year: 1931,
+  platform: "Itaú Cultural Play",
+  image: "./images/limite.jpg",
+  sinopse: "Uma obra-prima do cinema experimental brasileiro, sem diálogos, que explora temas de aprisionamento e liberdade através de três personagens em um barco.",
+  isFeatured: false,
+},
+{
+  id: 58,
+  title: "O Bandido da Luz Vermelha",
+  genre: "Drama, Crime",
+  year: 1968,
+  platform: "Itaú Cultural Play, Spcine Play",
+  image: "./images/o-bandido-da-luz-vermelha.jpg",
+  sinopse: "Inspirado na figura de um famoso criminoso paulista, o filme mistura documentário e ficção, com crítica social e estética anárquica.",
+  isFeatured: false,
+},
+{
+  id: 59,
+  title: "Deus e o Diabo na Terra do Sol",
+  genre: "Drama",
+  year: 1964,
+  platform: "Telecine Play, Petra Belas Artes à La Carte, Itaú Cultural Play",
+  image: "./images/deus-e-o-diabo-na-terra-do-sol.jpg",
+  sinopse: "Manuel e Rosa, um casal de camponeses, fogem da seca e da opressão no sertão nordestino, envolvendo-se com o cangaço e o messianismo.",
+  isFeatured: false,
+},
+{
+  id: 60,
+  title: "A Hora da Estrela",
+  genre: "Drama",
+  year: 1985,
+  platform: "Telecine Play, Itaú Cultural Play",
+  image: "./images/a-hora-da-estrela.jpg",
+  sinopse: "A vida de Macabéa, uma datilógrafa nordestina ingênua e sonhadora que vive na pobreza em São Paulo.",
+  isFeatured: false,
+},
+{
+  id: 61,
+  title: "São Paulo, Sociedade Anônima",
+  genre: "Drama",
+  year: 1965,
+  platform: "Itaú Cultural Play",
+  image: "./images/sao-paulo-sociedade-anonima.jpg",
+  sinopse: "Carlos, um jovem ambicioso, trabalha em uma fábrica em São Paulo, enfrentando dilemas éticos e morais em meio ao desenvolvimento industrial.",
+  isFeatured: false,
+},
+{
+  id: 62,
+  title: "Vidas Marcadas",
+  genre: "Drama",
+  year: 1953,
+  platform: "Não amplamente disponível.",
+  image: "./images/vidas-marcadas.jpg",
+  sinopse: "A vida de um jovem que busca uma nova vida após um crime acidental, mas é perseguido pelo passado.",
+  isFeatured: false,
+},
+{
+  id: 63,
+  title: "O Padre e a Moça",
+  genre: "Drama",
+  year: 1966,
+  platform: "Itaú Cultural Play",
+  image: "./images/o-padre-e-a-moca.jpg",
+  sinopse: "Um padre se apaixona por uma jovem na pequena cidade onde serve, gerando um escândalo.",
+  isFeatured: false,
+},
+{
+  id: 64,
+  title: "Eles Não Usam Black-tie",
+  genre: "Drama",
+  year: 1981,
+  platform: "Telecine Play, Itaú Cultural Play",
+  image: "./images/eles-nao-usam-black-tie.jpg",
+  sinopse: "Durante a ditadura militar, em meio a uma greve de trabalhadores, um jovem se recusa a participar do movimento, gerando conflitos familiares e políticos.",
+  isFeatured: false,
+},
+{
+  id: 65,
+  title: "Ilha das Flores",
+  genre: "Curta-metragem, Documentário, Comédia",
+  year: 1989,
+  platform: "YouTube (disponível gratuitamente), Porta Curtas",
+  image: "./images/ilha-das-flores.jpg",
+  sinopse: "Uma irônica e ácida reflexão sobre a cadeia produtiva e as desigualdades sociais, focando no destino de um tomate.",
+  isFeatured: false,
+},
+{
+  id: 66,
+  title: "Bye Bye Brasil",
+  genre: "Drama, Comédia",
+  year: 1979,
+  platform: "Telecine Play, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+  image: "./images/bye-bye-brasil.jpg",
+  sinopse: "Uma caravana de artistas mambembes viaja pelo interior do Brasil, testemunhando as transformações do país com a chegada do progresso.",
+  isFeatured: false,
+},
+{
+  id: 67,
+  title: "À Meia-Noite Levarei Sua Alma",
+  genre: "Terror",
+  year: 1964,
+  platform: "Belas Artes à La Carte",
+  image: "./images/a-meia-noite-levarei-sua-alma.jpg",
+  sinopse: "Zé do Caixão, um agente funerário ateu e sádico, busca a mulher perfeita para gerar um filho 'superior' e dar continuidade à sua linhagem.",
+  isFeatured: false,
+},
+{
+  id: 68,
+  title: "O Assalto ao Trem Pagador",
+  genre: "Crime, Drama",
+  year: 1962,
+  platform: "Não amplamente disponível.",
+  image: "./images/o-assalto-ao-trem-pagador.jpg",
+  sinopse: "Um grupo de ladrões de favela planeja e executa o roubo a um trem que transporta o pagamento de salários.",
+  isFeatured: false,
+},
+{
+  id: 69,
+  title: "Morte e Vida Severina",
+  genre: "Drama, Musical",
+  year: 1977,
+  platform: "Não amplamente disponível.",
+  image: "./images/morte-e-vida-severina.jpg",
+  sinopse: "Adaptação da obra de João Cabral de Melo Neto, narra a jornada de Severino, um retirante nordestino que busca uma vida melhor.",
+  isFeatured: false,
+},
+{
+  id: 70,
+  title: "O Dragão da Maldade Contra o Santo Guerreiro",
+  genre: "Drama, Aventura",
+  year: 1969,
+  platform: "Telecine Play, Petra Belas Artes à La Carte, Itaú Cultural Play",
+  image: "./images/o-dragao-da-maldade-contra-o-santo-guerreiro.jpg",
+  sinopse: "Antigo vaqueiro e cangaceiro, Antônio das Mortes, volta à cidade para combater um novo grupo de jagunços e um líder messiânico.",
+  isFeatured: false,
+},
+{
+  id: 71,
+  title: "Deus e o Diabo na Terra do Sol",
+  genre: "Drama",
+  year: 1964,
+  platform: "Telecine Play, Petra Belas Artes à La Carte, Itaú Cultural Play",
+  image: "./images/deus-e-o-diabo-na-terra-do-sol.jpg",
+  sinopse: "Manuel e Rosa, um casal de camponeses, fogem da seca e da opressão no sertão nordestino, envolvendo-se com o cangaço e o messianismo.",
+  isFeatured: false,
+},
+{
+  id: 72,
+  title: "Cronicamente Inviável",
+  genre: "Drama, Comédia",
+  year: 2000,
+  platform: "Não amplamente disponível.",
+  image: "./images/cronicamente-inviavel.jpg",
+  sinopse: "Retrato cômico e ácido da elite brasileira, mostrando seus preconceitos e hipocrisias.",
+  isFeatured: false,
+},
+{
+  id: 73,
+  title: "O País de São Saruê",
+  genre: "Documentário",
+  year: 1971,
+  platform: "Itaú Cultural Play, Spcine Play",
+  image: "./images/o-pais-de-sao-sarue.jpg",
+  sinopse: "Um olhar sobre a realidade de miséria e fome no sertão da Paraíba.",
+  isFeatured: false,
+},
+{
+  id: 74,
+  title: "A Falecida",
+  genre: "Drama",
+  year: 1965,
+  platform: "Itaú Cultural Play",
+  image: "./images/a-falecida.jpg",
+  sinopse: "Zé Luís se endivida para realizar o velório luxuoso de sua esposa, que tem o desejo de ser enterrada como madame.",
+  isFeatured: false,
+},
+{
+  id: 75,
+  title: "O Auto da Compadecida",
+  genre: "Comédia, Aventura",
+  year: 2000,
+  platform: "Globoplay, Amazon Prime Video, Telecine Play",
+  image: "./images/o-auto-da-compadecida.jpg",
+  sinopse: "As aventuras de João Grilo e Chicó, dois amigos nordestinos que vivem de pequenos golpes no sertão, até que se deparam com o julgamento final.",
+  isFeatured: false,
+},
+{
+  id: 76,
+  title: "Meu Passado Me Condena - O Filme",
+  genre: "Comédia Romântica",
+  year: 2013,
+  platform: "Telecine Play, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+  image: "./images/meu-passado-me-condena-o-filme.jpg",
+  sinopse: "Um casal recém-casado viaja em um cruzeiro e encontra seus ex-namorados.",
+  isFeatured: false,
+},
+{
+  id: 77,
+  title: "Minha Mãe É Uma Peça: O Filme",
+  genre: "Comédia",
+  year: 2013,
+  platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra), Telecine Play",
+  image: "./images/minha-mae-e-uma-peca-o-filme.jpg",
+  sinopse: "Dona Hermínia, uma mãe de classe média que não cala a boca, precisa lidar com os dramas de seus filhos.",
+  isFeatured: false,
+},
+{
+  id: 78,
+  title: "Minha Mãe É Uma Peça 2",
+  genre: "Comédia",
+  year: 2016,
+  platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra), Telecine Play",
+  image: "./images/minha-mae-e-uma-peca-2.jpg",
+  sinopse: "Dona Hermínia está rica, mas precisa lidar com a nova fase de seus filhos.",
+  isFeatured: false,
+},
+{
+  id: 79,
+  title: "Minha Mãe É Uma Peça 3",
+  genre: "Comédia",
+  year: 2019,
+  platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra), Telecine Play",
+  image: "./images/minha-mae-e-uma-peca-3.jpg",
+  sinopse: "Dona Hermínia precisa se adaptar às mudanças em sua família, como a gravidez de Marcelina e o casamento de Juliano.",
+  isFeatured: false,
+},
+{
+  id: 80,
+  title: "Medida Provisória",
+  genre: "Drama, Ficção Científica",
+  year: 2020,
+  platform: "Amazon Prime Video",
+  image: "./images/medida-provisoria.jpg",
+  sinopse: "Em um futuro distópico, o governo brasileiro decreta uma medida provisória que obriga todos os cidadãos negros a se mudarem para a África.",
+  isFeatured: false,
+},
+{
+  id: 81,
+  title: "Marighella",
+  genre: "Drama, Biografia, Ação",
+  year: 2019,
+  platform: "Netflix (anteriormente), agora Amazon Prime Video (aluguel/compra), Apple TV (aluguel/compra)",
+  image: "./images/marighella.jpg",
+  sinopse: "A vida de Carlos Marighella, guerrilheiro e líder da luta armada contra a ditadura militar no Brasil.",
+  isFeatured: false,
+},
+{
+  id: 82,
+  title: "A Vida Invisível",
+  genre: "Drama",
+  year: 2019,
+  platform: "Telecine Play, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra), MUBI",
+  image: "./images/a-vida-invisivel.jpg",
+  sinopse: "No Rio de Janeiro dos anos 1950, duas irmãs são separadas pela vida e lutam para se reencontrar e realizar seus sonhos.",
+  isFeatured: false,
+},
+{
+  id: 83,
+  title: "Aquarius",
+  genre: "Drama",
+  year: 2016,
+  platform: "Telecine Play, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra), MUBI",
+  image: "./images/aquarius.jpg",
+  sinopse: "Clara, uma jornalista aposentada, se recusa a vender seu apartamento para uma construtora, travando uma batalha para manter seu lar e suas memórias.",
+  isFeatured: false,
+},
+{
+  id: 84,
+  title: "O Jardineiro Fiel",
+  genre: "Drama, Suspense",
+  year: 2005,
+  platform: "Star+",
+  image: "./images/o-jardineiro-fiel.jpg",
+  sinopse: "Um diplomata britânico investiga a morte de sua esposa, uma ativista, no Quênia, descobrindo uma conspiração farmacêutica.",
+  isFeatured: false,
+},
+{
+  id: 85,
+  title: "Cidade Pássaro",
+  genre: "Drama",
+  year: 2018,
+  platform: "Não amplamente disponível.",
+  image: "./images/cidade-passaro.jpg",
+  sinopse: "Um jovem músico uruguaio viaja para São Paulo em busca de seu pai e acaba se envolvendo em uma misteriosa rede de segredos.",
+  isFeatured: false,
+},
+{
+  id: 86,
+  title: "Tropa de Elite: O filme",
+  genre: "Ação, Drama, Crime",
+  year: 2007,
+  platform: "Globoplay, Telecine Play, Amazon Prime Video (aluguel/compra), Apple TV (aluguel/compra)",
+  image: "./images/tropa-de-elite-o-filme.jpg",
+  sinopse: "O Capitão Nascimento, do BOPE, busca um substituto para sua posição enquanto combate o crime no Rio de Janeiro.",
+  isFeatured: false,
+},
+{
+  id: 87,
+  title: "O Homem Nu",
+  genre: "Comédia",
+  year: 1997,
+  platform: "Globoplay (aluguel/compra)",
+  image: "./images/o-homem-nu.jpg",
+  sinopse: "Um homem acorda sem roupa no apartamento de uma vizinha e precisa atravessar a cidade.",
+  isFeatured: false,
+},
+{
+  id: 88,
+  title: "O Outro Lado da Rua",
+  genre: "Drama, Suspense",
+  year: 2004,
+  platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+  image: "./images/o-outro-lado-da-rua.jpg",
+  sinopse: "Regina, uma idosa que vive sozinha no Rio de Janeiro, testemunha um possível assassinato e se envolve com o suspeito.",
+  isFeatured: false,
+},
+{
+  id: 89,
+  title: "O Lobo Atrás da Porta",
+  genre: "Thriller, Drama",
+  year: 2013,
+  platform: "Globoplay, Amazon Prime Video (aluguel/compra), Apple TV (aluguel/compra)",
+  image: "./images/o-lobo-atras-da-porta.jpg",
+  sinopse: "Uma mãe desaparece e a investigação leva a um complexo triângulo amoroso e a segredos obscuros.",
+  isFeatured: false,
+},
+{
+  id: 90,
+  title: "Bacurau",
+  genre: "Drama, Ficção Científica, Faroeste",
+  year: 2019,
+  platform: "Telecine Play, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra), MUBI",
+  image: "./images/bacurau.jpg",
+  sinopse: "Moradores de um vilarejo no sertão de Pernambuco, que some do mapa, descobrem que são alvo de caçadores estrangeiros.",
+  isFeatured: false,
+},
+{
+  id: 91,
+  title: "O Som ao Redor",
+  genre: "Drama",
+  year: 2012,
+  platform: "Telecine Play, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+  image: "./images/o-som-ao-redor.jpg",
+  sinopse: "A vida em uma rua de classe média de Recife muda com a chegada de uma empresa de segurança privada, revelando tensões sociais e urbanas.",
+  isFeatured: false,
+},
+{
+  id: 92,
+  title: "Que Horas Ela Volta?",
+  genre: "Drama",
+  year: 2015,
+  platform: "Netflix, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+  image: "./images/que-horas-ela-volta.jpg",
+  sinopse: "A vida de Val, uma empregada doméstica, muda quando sua filha, Jéssica, vem para São Paulo para prestar vestibular e questiona as barreiras sociais.",
+  isFeatured: false,
+},
+{
+  id: 93,
+  title: "Um contra Todos",
+  genre: "Drama, Biografia",
+  year: 2016,
+  platform: "Netflix",
+  image: "./images/um-contra-todos.jpg",
+  sinopse: "Baseado em fatos reais, o filme acompanha a história de um advogado que é preso injustamente e precisa lutar para provar sua inocência.",
+  isFeatured: false,
+},
+{
+  id: 94,
+  title: "Tim Maia: O Filme",
+  genre: "Biografia, Musical, Drama",
+  year: 2014,
+  platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra), Telecine Play",
+  image: "./images/tim-maia-o-filme.jpg",
+  sinopse: "A trajetória de Tim Maia, desde sua juventude no Rio de Janeiro até se tornar um dos maiores ícones da música brasileira.",
+  isFeatured: false,
+},
+{
+  id: 95,
+  title: "Nise: O Coração da Loucura",
+  genre: "Drama, Biografia",
+  year: 2015,
+  platform: "Netflix, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+  image: "./images/nise-o-coracao-da-loucura.jpg",
+  sinopse: "A psiquiatra Nise da Silveira revoluciona o tratamento de pacientes psiquiátricos no Brasil, utilizando a arte como terapia.",
+  isFeatured: false,
+},
+{
+  id: 96,
+  title: "Chatô, o Rei do Brasil",
+  genre: "Drama, Biografia",
+  year: 2015,
+  platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+  image: "./images/chato-o-rei-do-brasil.jpg",
+  sinopse: "A vida de Assis Chateaubriand, um dos mais importantes empresários da comunicação no Brasil.",
+  isFeatured: false,
+},
+{
+  id: 97,
+  title: "O Doutrinador",
+  genre: "Ação, Thriller",
+  year: 2018,
+  platform: "Amazon Prime Video, Looke (aluguel/compra)",
+  image: "./images/o-doutrinador.jpg",
+  sinopse: "Um agente federal, frustrado com a corrupção, decide fazer justiça com as próprias mãos, tornando-se um vigilante.",
+  isFeatured: false,
+},
+{
+  id: 98,
+  title: "A Busca",
+  genre: "Drama",
+  year: 2012,
+  platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+  image: "./images/a-busca.jpg",
+  sinopse: "Um pai sai em busca de seu filho adolescente, que desapareceu misteriosamente, enquanto lida com problemas em seu casamento.",
+  isFeatured: false,
+},
+{
+  id: 99,
+  title: "Tropa de Elite 2: O Inimigo Agora É Outro",
+  genre: "Ação, Drama, Crime",
+  year: 2010,
+  platform: "Globoplay, Telecine Play, Amazon Prime Video (aluguel/compra), Apple TV (aluguel/compra)",
+  image: "./images/tropa-de-elite-2-o-inimigo-agora-e-outro.jpg",
+  sinopse: "O Coronel Nascimento enfrenta inimigos mais poderosos: políticos e empresários corruptos.",
+  isFeatured: false,
+},
+{
+  id: 100,
+  title: "O Palhaço",
+  genre: "Comédia, Drama",
+  year: 2011,
+  platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra), Telecine Play",
+  image: "./images/o-palhaco.jpg",
+  sinopse: "Benjamim e Valdemar formam a dupla de palhaços Pangaré e Puro Sangue. Benjamim, no entanto, entra em crise existencial e decide abandonar o circo.",
+  isFeatured: false,
+},
+
+{
+  id: 101,
+  title: "O Shaolin do Sertão",
+  genre: "Comédia",
+  year: 2016,
+  platform: "Telecine Play, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+  image: "./images/o-shaolin-do-sertao.jpg",
+  sinopse: "Um lutador de MMA aposentado vira um mestre de artes marciais no sertão cearense, desafiando o lendário 'Shaolin do Sertão'.",
+  isFeatured: false,
+},
+{
+  id: 102,
+  title: "Elis",
+  genre: "Biografia, Drama, Musical",
+  year: 2016,
+  platform: "Globoplay, Amazon Prime Video (aluguel/compra)",
+  image: "./images/elis.jpg",
+  sinopse: "A trajetória da cantora Elis Regina, desde sua chegada ao Rio de Janeiro até se tornar uma das maiores vozes do Brasil.",
+  isFeatured: false,
+},
+{
+  id: 103,
+  title: "Como Nossos Pais",
+  genre: "Drama",
+  year: 2017,
+  platform: "Telecine Play, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+  image: "./images/como-nossos-pais.jpg",
+  sinopse: "Rosa, uma mulher de 30 e poucos anos, lida com as pressões de ser esposa, mãe e filha, e descobre segredos familiares.",
+  isFeatured: false,
+},
+{
+  id: 104,
+  title: "Divino Amor",
+  genre: "Drama, Ficção Científica",
+  year: 2019,
+  platform: "Telecine Play, MUBI",
+  image: "./images/divino-amor.jpg",
+  sinopse: "Em um futuro próximo, uma escrivã de divórcios utiliza sua fé para tentar salvar casamentos, enquanto lida com sua própria crise conjugal.",
+  isFeatured: false,
+},
+{
+  id: 105,
+  title: "Legalize Já! - Amizade Nunca Morre",
+  genre: "Biografia, Drama",
+  year: 2018,
+  platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra), Telecine Play",
+  image: "./images/legalize-ja-amizade-nunca-morre.jpg",
+  sinopse: "A história de Marcelo D2 e Skunk, fundadores da banda Planet Hemp, e sua luta pela legalização da maconha.",
+  isFeatured: false,
+},
+{
+  id: 106,
+  title: "O Silêncio do Céu",
+  genre: "Drama, Suspense",
+  year: 2016,
+  platform: "Telecine Play, Looke (aluguel/compra)",
+  image: "./images/o-silencio-do-ceu.jpg",
+  sinopse: "Um homem testemunha o estupro de sua esposa e decide não contar a ninguém, vivendo um drama silencioso.",
+  isFeatured: false,
+},
+{
+  id: 107,
+  title: "A Glória e a Graça",
+  genre: "Comédia, Drama",
+  year: 2017,
+  platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+  image: "./images/a-gloria-e-a-graca.jpg",
+  sinopse: "Uma mulher transexual volta para sua cidade natal para o funeral da irmã, tendo que lidar com a família e a sociedade.",
+  isFeatured: false,
+},
+{
+  id: 108,
+  title: "Benzinho",
+  genre: "Drama",
+  year: 2018,
+  platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra), MUBI",
+  image: "./images/benzinho.jpg",
+  sinopse: "Irene, uma mãe de quatro filhos, lida com a partida do mais velho para a Alemanha, enquanto busca realizar seus próprios sonhos.",
+  isFeatured: false,
+},
+{
+  id: 109,
+  title: "Chico Xavier",
+  genre: "Biografia, Drama",
+  year: 2010,
+  platform: "Globoplay, Telecine Play, Amazon Prime Video (aluguel/compra)",
+  image: "./images/chico-xavier.jpg",
+  sinopse: "A vida de Chico Xavier, o médium brasileiro que dedicou sua vida à caridade e à psicografia.",
+  isFeatured: false,
+},
+{
+  id: 110,
+  title: "Nosso Lar",
+  genre: "Drama, Fantasia",
+  year: 2010,
+  platform: "Netflix, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+  image: "./images/nosso-lar.jpg",
+  sinopse: "A jornada de André Luiz, um médico que, após a morte, acorda em uma colônia espiritual e aprende sobre a vida após a morte.",
+  isFeatured: false,
+},
+{
+  id: 111,
+  title: "Fala Sério, Mãe!",
+  genre: "Comédia",
+  year: 2017,
+  platform: "Telecine Play, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+  image: "./images/fala-serio-mae.jpg",
+  sinopse: "Ângela Cristina tenta se adaptar às mudanças e desafios da maternidade enquanto sua filha cresce e entra na adolescência.",
+  isFeatured: false,
+},
+{
+  id: 112,
+  title: "Entre Idas e Vindas",
+  genre: "Comédia Dramática",
+  year: 2016,
+  platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+  image: "./images/entre-idas-e-vindas.jpg",
+  sinopse: "Quatro amigas se reencontram em uma viagem de carro pelo interior de São Paulo, enquanto um homem viaja com sua família.",
+  isFeatured: false,
+},
+{
+  id: 115,
+  title: "Divã",
+  genre: "Comédia, Drama",
+  year: 2009,
+  platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+  image: "./images/diva.jpg",
+  sinopse: "Mercedes, uma mulher casada de meia-idade, decide fazer terapia e questionar sua vida.",
+  isFeatured: false,
+},
+{
+  id: 116,
+  title: "O Gorila",
+  genre: "Comédia",
+  year: 2012,
+  platform: "Telecine Play (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+  image: "./images/o-gorila.jpg",
+  sinopse: "Um professor universitário que se veste de gorila para protestar contra a violência urbana.",
+  isFeatured: false,
+},
+{
+  id: 117,
+  title: "A Grande Família - O Filme",
+  genre: "Comédia",
+  year: 2007,
+  platform: "Globoplay, Telecine Play",
+  image: "./images/a-grande-familia-o-filme.jpg",
+  sinopse: "A família Silva enfrenta novas confusões e aventuras após um desentendimento com um vizinho.",
+  isFeatured: false,
+},
+{
+  id: 118,
+  title: "Chacrinha: O Velho Guerreiro",
+  genre: "Biografia, Musical",
+  year: 2018,
+  platform: "Telecine Play, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+  image: "./images/chacrinha-o-velho-guerreiro.jpg",
+  sinopse: "A história de Abelardo Barbosa, o Chacrinha, um dos maiores comunicadores da televisão brasileira.",
+  isFeatured: false,
+},
+{
+  id: 119,
+  title: "O Homem do Futuro",
+  genre: "Comédia, Ficção Científica, Romance",
+  year: 2011,
+  platform: "Telecine Play, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+  image: "./images/o-homem-do-futuro.jpg",
+  sinopse: "Zero, um cientista genial e solitário, viaja no tempo para tentar mudar seu passado amoroso.",
+  isFeatured: false,
+},
+{
+  id: 121,
+  title: "Hoje Eu Quero Voltar Sozinho",
+  genre: "Drama, Romance",
+  year: 2014,
+  platform: "Netflix, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+  image: "./images/hoje-eu-quero-voltar-sozinho.jpg",
+  sinopse: "Léo, um adolescente cego, busca sua independência e vive um novo amor.",
+  isFeatured: false,
+},
+{
+  id: 124,
+  title: "O Quatrilho",
+  genre: "Drama, Romance",
+  year: 1995,
+  platform: "Telecine Play, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+  image: "./images/o-quatrilho.jpg",
+  sinopse: "Duas irmãs italianas casam-se com dois irmãos e, em meio à vida no interior do Rio Grande do Sul, trocas de casais acontecem.",
+  isFeatured: false,
+},
+{
+  id: 127,
+  title: "Um dia com Jerusa",
+  genre: "Drama",
+  year: 2020,
+  platform: "Amazon Prime Video, Spcine Play, Itaú Cultural Play",
+  image: "./images/um-dia-com-jerusa.jpg",
+  sinopse: "Silvia, uma pesquisadora de campo, encontra Jerusa, uma idosa que a convida para um dia de conversas e revelações sobre sua vida.",
+  isFeatured: false,
+},
+{
+  id: 128,
+  title: "Pequeno Dicionário Amoroso",
+  genre: "Comédia Romântica",
+  year: 1997,
+  platform: "Não amplamente disponível.",
+  image: "./images/pequeno-dicionario-amoroso.jpg",
+  sinopse: "Um casal se apaixona e suas histórias são contadas através de verbetes de um dicionário.",
+  isFeatured: false,
+},
+{
+  id: 129,
+  title: "Se Eu Fosse Você 2",
+  genre: "Comédia",
+  year: 2009,
+  platform: "Globoplay, Telecine Play, Amazon Prime Video (aluguel/compra)",
+  image: "./images/se-eu-fosse-voce-2.jpg",
+  sinopse: "O casal Helena e Cláudio troca de corpos novamente, agora lidando com o casamento da filha e outros problemas familiares.",
+  isFeatured: false,
+},
+{
+  id: 130,
+  title: "Faroeste Caboclo",
+  genre: "Drama, Ação, Romance",
+  year: 2013,
+  platform: "Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra), Telecine Play",
+  image: "./images/faroeste-caboclo.jpg",
+  sinopse: "Baseado na canção da Legião Urbana, o filme narra a história de João de Santo Cristo e seu envolvimento com Maria Lúcia e o tráfico de drogas em Brasília.",
+  isFeatured: false,
+},
+{
+  id: 192,
+  title: "Tainá - Uma Aventura na Amazônia",
+  genre: "Aventura, Família",
+  year: 2000,
+  platform: "Amazon Prime Video (aluguel/compra), Looke (aluguel/compra)",
+  image: "./images/taina-uma-aventura-na-amazonia.jpg",
+  sinopse: "Acompanha Tainá, uma menina indígena, que se torna uma protetora da Amazônia e de seus animais.",
+  isFeatured: false,
+},
+{
+  id: 193,
+  title: "Assalto ao Banco Central",
+  genre: "Ação, Crime",
+  year: 2011,
+  platform: "Telecine Play, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+  image: "./images/assalto-ao-banco-central.jpg",
+  sinopse: "Baseado no roubo ao Banco Central em Fortaleza, o filme narra os detalhes do planejamento e execução do crime.",
+  isFeatured: false,
+},
+{
+  id: 131,
+  title: "Filme Exemplo 131",
+  genre: "Drama",
+  year: 2015,
+  platform: "Plataforma de Exemplo",
+  image: "./images/filme-exemplo-131.jpg",
+  sinopse: "Sinopse do filme exemplo 131.",
+  isFeatured: false,
+},
+{
+  id: 132,
+  title: "Filme Exemplo 132",
+  genre: "Comédia",
+  year: 2016,
+  platform: "Plataforma de Exemplo",
+  image: "./images/filme-exemplo-132.jpg",
+  sinopse: "Sinopse do filme exemplo 132.",
+  isFeatured: false,
+},
+
+{
+  id: 192,
+  title: "Tainá - Uma Aventura na Amazônia",
+  genre: "Aventura, Família",
+  year: 2000,
+  platform: "Amazon Prime Video (aluguel/compra), Looke (aluguel/compra)",
+  image: "./images/taina-uma-aventura-na-amazonia.jpg",
+  sinopse: "Acompanha Tainá, uma menina indígena, que se torna uma protetora da Amazônia e de seus animais.",
+  isFeatured: false,
+},
+{
+  id: 193,
+  title: "Assalto ao Banco Central",
+  genre: "Ação, Crime",
+  year: 2011,
+  platform: "Telecine Play, Globoplay (aluguel/compra), Amazon Prime Video (aluguel/compra)",
+  image: "./images/assalto-ao-banco-central.jpg",
+  sinopse: "Baseado no roubo ao Banco Central em Fortaleza, o filme narra os detalhes do planejamento e execução do crime.",
+  isFeatured: false,
+}
+
+];
+
+// As décadas
+function getDecade(year) {
+  if (!year) return "Desconhecido";
+  const decade = Math.floor(year / 10) * 10;
+  return `${decade}s`;
+}
+const allGenres = [...new Set(DADOS_TITULOS.flatMap(t => t.genre.split(',').map(g => g.trim())))].sort();
+const allDecades = [...new Set(DADOS_TITULOS.map(t => getDecade(t.year)))].sort();
+
+
+const MENUS = [
+  {key: "home", label: "Início"},
+  {key: "categories", label: "Categorias"},
+  {key: "releases", label: "Lançamentos"},
+  {key: "mylist", label: "Minha Lista"}
+];
+function Navbar({selected, onSelect}) {
+  return (
+    <nav className="mt-6">
+      <ul className="flex justify-center space-x-6 text-lg font-semibold">
+        {MENUS.map(m =>
+          <li key={m.key}>
+            <button
+              className={
+                (selected === m.key
+                  ? "text-yellow-400 underline"
+                  : "hover:text-yellow-300") +
+                " transition duration-200"
+              }
+              onClick={() => onSelect(m.key)}
+            >{m.label}</button>
+          </li>
+        )}
+      </ul>
+    </nav>
+  );
+}
+
+// Minha lista
+function useMyList() {
+  const [list, setList] = React.useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("mylist") || "[]");
+    } catch { return []; }
+  });
+  React.useEffect(() => {
+    localStorage.setItem("mylist", JSON.stringify(list));
+  }, [list]);
+  return [list, setList];
+}
+
+// Filtros
+const GenreFilter = ({ onSelectGenre, selectedGenre }) => (
+  <div className="flex flex-wrap gap-2 justify-center mb-4">
+    <button
+      className={`px-4 py-2 rounded ${!selectedGenre ? 'bg-brazil-dark-blue text-white' : 'bg-light-gray text-dark-blue'} font-bold shadow`}
+      onClick={() => onSelectGenre(null)}
+    >
+      Todos os Gêneros
+    </button>
+    {allGenres.map(genre => (
+      <button
+        key={genre}
+        className={`px-4 py-2 rounded ${selectedGenre === genre ? 'bg-brazil-yellow text-dark-blue' : 'bg-light-gray text-dark-blue'} font-bold shadow`}
+        onClick={() => onSelectGenre(genre)}
+      >
+        {genre}
+      </button>
+    ))}
+  </div>
+);
+const DecadeFilter = ({ onSelectDecade, selectedDecade }) => (
+  <div className="flex flex-wrap gap-2 justify-center mb-8">
+    <button
+      className={`px-4 py-2 rounded ${!selectedDecade ? 'bg-brazil-dark-blue text-white' : 'bg-light-gray text-dark-blue'} font-bold shadow`}
+      onClick={() => onSelectDecade(null)}
+    >
+      Todas as Décadas
+    </button>
+    {allDecades.map(decade => (
+      <button
+        key={decade}
+        className={`px-4 py-2 rounded ${selectedDecade === decade ? 'bg-brazil-yellow text-dark-blue' : 'bg-light-gray text-dark-blue'} font-bold shadow`}
+        onClick={() => onSelectDecade(decade)}
+      >
+        {decade}
+      </button>
+    ))}
+  </div>
+);
+
+//  CARD DE FILME  
+function MovieCard({ movie, onMovieClick, isInList, toggleInList }) {
+  return (
+    <div className="flex-none w-40 md:w-48 lg:w-56 bg-brazil-green rounded-lg shadow-xl overflow-hidden transform transition duration-300 hover:scale-105 hover:shadow-2xl cursor-pointer relative">
+      <img src={movie.image} alt={`Capa de ${movie.title}`} className="w-full h-auto object-cover rounded-t-lg"
+        onClick={() => onMovieClick(movie)}
+        onError={e => {e.target.onerror=null; e.target.src='https://placehold.co/300x450/FFC107/ffffff?text=Imagem+Nao+Disponivel';}}
+      />
+      <button
+        className={
+          "absolute top-2 right-2 rounded-full px-2 py-1 text-xs font-bold shadow " +
+          (isInList
+            ? "bg-yellow-400 text-brazil-dark-blue"
+            : "bg-brazil-dark-blue text-white opacity-80")
+        }
+        title={isInList ? "Remover da Minha Lista" : "Adicionar à Minha Lista"}
+        onClick={e => {e.stopPropagation(); toggleInList(movie.id);}}
+      >
+        {isInList ? "✓ Na lista" : "+ Lista"}
+      </button>
+      <div className="p-3" onClick={() => onMovieClick(movie)}>
+        <h3 className="text-white text-md md:text-lg font-semibold truncate">{movie.title}</h3>
+        <p className="text-yellow-accent text-sm md:text-base">{movie.year}</p>
+        <p className="text-white text-xs mt-1 line-clamp-2">{movie.sinopse}</p>
+        <p className="text-white text-xs md:text-sm mt-1 opacity-80">{movie.platform}</p>
+      </div>
+    </div>
+  );
+}
+
+// CARROSSEL 
+const MovieCarouselSection = ({ title, movies, onMovieClick, isInList, toggleInList }) => {
+  const scrollRef = React.useRef();
+  const [canScrollLeft, setCanScrollLeft] = React.useState(false);
+  const [canScrollRight, setCanScrollRight] = React.useState(false);
+
+  const updateScrollButtons = () => {
+    const el = scrollRef.current;
+    if (el) {
+      setCanScrollLeft(el.scrollLeft > 10);
+      setCanScrollRight(el.scrollWidth > el.clientWidth + el.scrollLeft + 10);
+    }
+  };
+
+  React.useEffect(() => {
+    updateScrollButtons();
+    const el = scrollRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", updateScrollButtons);
+    window.addEventListener("resize", updateScrollButtons);
+    return () => {
+      el.removeEventListener("scroll", updateScrollButtons);
+      window.removeEventListener("resize", updateScrollButtons);
+    };
+  }, [movies.length]);
+
+  const scroll = (dir) => {
+    const el = scrollRef.current;
+    if (el) {
+      const scrollAmount = Math.floor(el.offsetWidth * 0.8);
+      el.scrollBy({ left: dir * scrollAmount, behavior: "smooth" });
+    }
+  };
+
+  return (
+    <section className="mb-8 p-4 bg-white rounded-lg shadow-lg relative">
+      <h2 className="text-2xl md:text-3xl font-bold text-dark-blue mb-4">{title}</h2>
+      <div className="relative">
+        {canScrollLeft && (
+          <button
+            className="carousel-arrow carousel-arrow-left"
+            onClick={() => scroll(-1)}
+            aria-label="Ver anteriores"
+          >&#8592;</button>
+        )}
+        {canScrollRight && (
+          <button
+            className="carousel-arrow carousel-arrow-right"
+            onClick={() => scroll(1)}
+            aria-label="Ver próximos"
+          >&#8594;</button>
+        )}
+        <div
+          ref={scrollRef}
+          className="flex overflow-x-auto space-x-4 pb-4 scrollbar-thin scrollbar-thumb-brazil-green scrollbar-track-light-gray"
+          style={{ scrollBehavior: 'smooth' }}
+        >
+          {movies.map(movie => (
+            <MovieCard
+              key={movie.id}
+              movie={movie}
+              onMovieClick={onMovieClick}
+              isInList={isInList(movie.id)}
+              toggleInList={toggleInList}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+//  MODAL DE DETALHES 
+const MovieDetailModal = ({ movie, onClose, isInList, toggleInList }) => {
+  if (!movie) return null;
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <button onClick={onClose} className="modal-close-button">&times;</button>
+        <h2 className="text-2xl md:text-3xl font-bold text-dark-blue mb-4">{movie.title}</h2>
+        <div className="flex flex-col md:flex-row gap-4 items-start">
+            <img src={movie.image} alt={`Capa de ${movie.title}`} className="w-32 md:w-40 h-auto rounded-lg object-cover shadow-md flex-shrink-0"
+              onError={e => {e.target.onerror=null; e.target.src='https://placehold.co/300x450/FFC107/ffffff?text=Imagem+Nao+Disponivel';}}
+            />
+            <div className="flex-1">
+                <p className="text-gray-700 mb-2 text-md md:text-lg"><strong className="text-brazil-green">Gênero:</strong> {movie.genre}</p>
+                <p className="text-gray-700 mb-2 text-md md:text-lg"><strong className="text-brazil-green">Ano:</strong> {movie.year}</p>
+                <p className="text-gray-700 mb-4 text-sm"><strong className="text-brazil-dark-blue">Sinopse:</strong> {movie.sinopse}</p>
+                <p className="text-xl md:text-2xl text-gray-800 mt-6"><strong className="text-brazil-dark-blue">Disponível em:</strong> <span className="font-extrabold text-vibrant-blue">{movie.platform}</span></p>
+                <button
+                  className={
+                    "mt-6 px-6 py-2 rounded-lg font-bold shadow " +
+                    (isInList
+                      ? "bg-yellow-400 text-brazil-dark-blue"
+                      : "bg-brazil-dark-blue text-white opacity-90 hover:bg-brazil-green")
+                  }
+                  onClick={() => toggleInList(movie.id)}
+                >
+                  {isInList ? "Remover da Minha Lista" : "Adicionar à Minha Lista"}
+                </button>
+            </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// PÁGINAS SPA
+function HomePage({ movies, onMovieClick, isInList, toggleInList }) {
+  const featuredTitles = movies.filter(m => m.isFeatured);
+  const otherTitles = movies.filter(m => !m.isFeatured);
+  return (
+    <>
+      <MovieCarouselSection title="Destaques Nacionais" movies={featuredTitles} onMovieClick={onMovieClick} isInList={isInList} toggleInList={toggleInList}/>
+      <MovieCarouselSection title="Outras Produções Brasileiras" movies={otherTitles} onMovieClick={onMovieClick} isInList={isInList} toggleInList={toggleInList}/>
+    </>
+  );
+}
+function CategoriesPage({ movies, onMovieClick, isInList, toggleInList }) {
+  
+  return (
+    <div>
+      <h2 className="text-2xl font-bold mb-4">Categorias</h2>
+      {allGenres.map(genre => {
+        const catMovies = movies.filter(m => m.genre.split(',').map(g => g.trim()).includes(genre));
+        if (!catMovies.length) return null;
+        return (
+          <MovieCarouselSection
+            key={genre}
+            title={genre}
+            movies={catMovies}
+            onMovieClick={onMovieClick}
+            isInList={isInList}
+            toggleInList={toggleInList}
+          />
+        );
+      })}
+    </div>
+  );
+}
+function ReleasesPage({ movies, onMovieClick, isInList, toggleInList }) {
+  // Exemplo: últimos lançamentos (últimos anos)
+  const mostRecentYear = Math.max(...movies.map(m => m.year || 0));
+  const launches = movies.filter(m => m.year && m.year >= mostRecentYear - 2);
+  return (
+    <div>
+      <h2 className="text-2xl font-bold mb-4">Lançamentos Recentes</h2>
+      <MovieCarouselSection title="Mais Recentes" movies={launches} onMovieClick={onMovieClick} isInList={isInList} toggleInList={toggleInList}/>
+    </div>
+  );
+}
+function MyListPage({ myListMovies, onMovieClick, toggleInList }) {
+  return (
+    <div>
+      <h2 className="text-2xl font-bold mb-4">Minha Lista</h2>
+      {myListMovies.length === 0
+        ? <div className="text-gray-600 text-lg">Sua lista está vazia.</div>
+        : (
+          <div className="flex flex-wrap gap-4">
+            {myListMovies.map(movie => (
+              <MovieCard
+                key={movie.id}
+                movie={movie}
+                onMovieClick={onMovieClick}
+                isInList={true}
+                toggleInList={toggleInList}
+              />
+            ))}
+          </div>
+        )
+      }
+    </div>
+  )
+}
+
+//  APP PRINCIPAL 
+function App() {
+  const [page, setPage] = React.useState("home");
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [selectedMovie, setSelectedMovie] = React.useState(null);
+  const [selectedGenre, setSelectedGenre] = React.useState(null);
+  const [selectedDecade, setSelectedDecade] = React.useState(null);
+  const [myList, setMyList] = useMyList();
+
+  // Funções para adicionar/remover da lista
+  function toggleInList(id) {
+    setMyList(list => list.includes(id)
+      ? list.filter(mid => mid !== id)
+      : [...list, id]
+    );
+  }
+  function isInList(id) {
+    return myList.includes(id);
+  }
+
+  // Filtragem dos filmes
+  let filteredTitles = DADOS_TITULOS;
+  if (searchTerm) {
+    const lowerCaseSearch = searchTerm.toLowerCase();
+    filteredTitles = filteredTitles.filter(title =>
+      title.title.toLowerCase().includes(lowerCaseSearch) ||
+      title.genre.toLowerCase().includes(lowerCaseSearch) ||
+      title.platform.toLowerCase().includes(lowerCaseSearch)
+    );
+  }
+  if (selectedGenre) {
+    filteredTitles = filteredTitles.filter(title => title.genre.split(',').map(g => g.trim()).includes(selectedGenre));
+  }
+  if (selectedDecade) {
+    filteredTitles = filteredTitles.filter(title => getDecade(title.year) === selectedDecade);
+  }
+  const myListMovies = DADOS_TITULOS.filter(m => myList.includes(m.id));
+
+  // SPA render
+  let pageContent;
+  if (page === "home") {
+    pageContent = (
+      <>
+        <section className="bg-brazil-green text-white p-8 md:p-12 rounded-xl shadow-2xl text-center mb-10 transform -translate-y-4">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold font-montserrat leading-tight mb-6">Descubra e Valorize o Cinema Brasileiro!</h2>
+          <p className="text-md md:text-lg font-open-sans mb-8 max-w-3xl mx-auto opacity-90">Busque por filmes e documentários nacionais e saiba onde assisti-los nos principais streamings.</p>
+          <div className="flex justify-center items-center gap-4 flex-wrap">
+            <input
+              type="text"
+              placeholder="Pesquise por título, gênero, plataforma..."
+              className="p-3 md:p-4 rounded-lg text-gray-800 text-lg w-full max-w-xl shadow-inner focus:ring-4 focus:ring-yellow-accent outline-none transition duration-300"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <button
+              className="bg-yellow-accent text-dark-blue px-6 py-3 rounded-lg text-lg font-bold shadow-lg hover:bg-brazil-yellow transition duration-300 transform hover:scale-105 active:scale-95"
+              onClick={() => null}
+            >
+              Buscar
+            </button>
+          </div>
+          {searchTerm && (
+            <p className="mt-6 text-xl font-semibold text-white bg-brazil-dark-blue p-4 rounded-lg shadow-md max-w-2xl mx-auto">
+              Resultados para "{searchTerm}":
+            </p>
+          )}
+        </section>
+        <GenreFilter onSelectGenre={setSelectedGenre} selectedGenre={selectedGenre} />
+        <DecadeFilter onSelectDecade={setSelectedDecade} selectedDecade={selectedDecade} />
+        {(searchTerm || selectedGenre || selectedDecade) && filteredTitles.length > 0 && (
+          <MovieCarouselSection title="Resultados" movies={filteredTitles} onMovieClick={setSelectedMovie} isInList={isInList} toggleInList={toggleInList} />
+        )}
+        {(searchTerm || selectedGenre || selectedDecade) && filteredTitles.length === 0 && (
+          <div className="text-center text-lg text-gray-700 p-8 bg-white rounded-lg shadow-lg">
+            Nenhum resultado encontrado.
+          </div>
+        )}
+        {!searchTerm && !selectedGenre && !selectedDecade && (
+          <HomePage movies={DADOS_TITULOS} onMovieClick={setSelectedMovie} isInList={isInList} toggleInList={toggleInList}/>
+        )}
+      </>
+    );
+  } else if (page === "categories") {
+    pageContent = (
+      <CategoriesPage movies={DADOS_TITULOS} onMovieClick={setSelectedMovie} isInList={isInList} toggleInList={toggleInList}/>
+    );
+  } else if (page === "releases") {
+    pageContent = (
+      <ReleasesPage movies={DADOS_TITULOS} onMovieClick={setSelectedMovie} isInList={isInList} toggleInList={toggleInList}/>
+    );
+  } else if (page === "mylist") {
+    pageContent = (
+      <MyListPage myListMovies={myListMovies} onMovieClick={setSelectedMovie} toggleInList={toggleInList}/>
+    );
+  }
+
+  return (
+    <div className="bg-gradient-to-b from-light-gray to-brazil-yellow min-h-screen">
+      <header className="bg-brazil-dark-blue text-white py-6 text-center shadow-lg">
+        <div className="container mx-auto px-4">
+          <h1 className="text-4xl md:text-5xl font-extrabold font-montserrat tracking-tight mb-2">Brasil em Cena</h1>
+          <p className="text-lg md:text-xl font-open-sans italic opacity-90">Seu mapa para encontrar e valorizar o Cinema brasileiro.</p>
+          <Navbar selected={page} onSelect={setPage} />
+        </div>
+      </header>
+      <main className="container mx-auto px-4 py-8">
+        {pageContent}
+      </main>
+      <footer className="bg-gray-800 text-white py-8 text-center text-sm font-open-sans">
+        <div className="container mx-auto px-4">
+          <p>&copy; 2025 Mapeamento Cultural. Todos os direitos reservados.</p>
+          <p className="mt-2 text-xs opacity-70">
+                Design e Mapeamento Cultural - Valorizando o cinema brasileiro.
+          </p>
+        </div>
+      </footer>
+      <MovieDetailModal
+        movie={selectedMovie}
+        onClose={() => setSelectedMovie(null)}
+        isInList={selectedMovie && isInList(selectedMovie.id)}
+        toggleInList={toggleInList}
+      />
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+
+    </script>
+</body>
+</html>
